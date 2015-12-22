@@ -1,0 +1,24 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+      <file>images/splash-mknixpost.png</file>
+      <file>images/filenew.png</file>
+      <file>images/filerefresh.png</file>
+      <file>images/fileopen.png</file>
+      <file>images/filesave.png</file>
+      <file>images/fileclose.png</file>
+      <file>images/fileprint.png</file>
+      <file>images/filequit.png</file>
+      <file>images/editcopy.png</file>
+      <file>images/editcut.png</file>
+      <file>images/editpaste.png</file>
+      <file>images/editundo.png</file>
+      <file>images/viewaxis.png</file>
+      <file>images/viewscalar.png</file>
+      <file>images/viewgraph.png</file>
+      <file>images/animationplayf.png</file>
+      <file>images/animationplayb.png</file>
+      <file>images/animationpause.png</file>
+      <file>images/animationrec.png</file>
+      <file>images/animationstop.png</file>
+</qresource>
+</RCC>
