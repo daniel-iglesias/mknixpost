@@ -9,6 +9,9 @@ FIND_PACKAGE(VTK REQUIRED)
 IF(VTK_FOUND)
   INCLUDE(${VTK_USE_FILE})
   INCLUDE_DIRECTORIES(${VTK_INCLUDE_DIR})
+  option(VTK_LEGACY_REMOVE "Remove all legacy code completely." ON)
+  option(VTK_LEGACY_SILENT "Silence all legacy code messages." ON)
+  mark_as_advanced(VTK_LEGACY_REMOVE VTK_LEGACY_SILENT)
 ELSE(VTK_FOUND)
   MESSAGE(FATAL_ERROR "Please set VTK_DIR.")
 ENDIF(VTK_FOUND)
@@ -95,5 +98,5 @@ link_directories(${VTK_DIR})
 TARGET_LINK_LIBRARIES(mknixpost
   ${VTK_LIBRARIES}
   ${QT_LIBRARIES}
-  QVTK
+  #QVTK
 )

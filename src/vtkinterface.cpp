@@ -330,11 +330,11 @@ void VTKInterface::readFlexBodies()
   while(input >> keyword) {
     if(!strcmp(keyword,"ENDFLEXBODIES")) return;
 
-    else if(!strcmp(keyword,"MESHFREE")){
+    else if(!strcmp(keyword,"MESHFREE") || !strcmp(keyword, "MESH")){
       input >> name;
 
       while(input >> keyword) { //read the node numbers
-        if(!strcmp(keyword,"ENDMESHFREE")) break;
+        if(!strcmp(keyword,"ENDMESHFREE") || !strcmp(keyword, "ENDMESH")) break;
 
         else if(!strcmp(keyword,"NODES")) {
           input >> firstNode >> lastNode;
@@ -469,18 +469,21 @@ void VTKInterface::readAnalysis()
 //      environments[keyword].addToRender( theRenderer );
       environmentsNames.push_back(keyword.c_str());
     }
-    else{ // Read the positions of formulation nodes along simulation time
-      std::istringstream i(keyword);
-      i >> time;
-//      time = atof(keyword);
-//      cout << keyword << ", ";
-      int qSize = dimension*nodes.size();
-      for (int i = 0; i < qSize; ++i){
-        input >> qi;
-        timeConf[time].push_back(qi);
-      }
-      it_timeConf = timeConf.begin();
-    }
+    else if(!strcmp(keyword.c_str(), "CONFIGURATION")){ // Read the positions of formulation nodes along simulation time
+		while (input >> keyword) {
+			if (!strcmp(keyword.c_str(), "ENDCONFIGURATION")) break;
+			std::istringstream i(keyword);
+			i >> time;
+			//      time = atof(keyword);
+			//      cout << keyword << ", ";
+			int qSize = dimension * nodes.size();
+			for (int i = 0; i < qSize; ++i) {
+				input >> qi;
+				timeConf[time].push_back(qi);
+			}
+			it_timeConf = timeConf.begin();
+		}
+	}
   }
 //  std::map<double, std::vector< double > >::iterator it_timeConf_temp;
 //  std::vector< double >::iterator it_vector;

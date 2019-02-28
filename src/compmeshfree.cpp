@@ -126,7 +126,7 @@ void CompMeshfree::initialize( std::map<int, CompNode>& nodes_in,
   
   aDataSetMapper = vtkDataSetMapper::New();
 #if VTK_MAJOR_VERSION > 5
-  aDataSetMapper->SetInputData( del2D->GetOutput() );
+  aDataSetMapper->SetInputConnection( del2D->GetOutputPort() );
 #else
   aDataSetMapper->SetInput( del2D->GetOutput() );
 #endif
@@ -256,7 +256,7 @@ void CompMeshfree::readResults( std::ifstream & input, int timeSize )
 void CompMeshfree::readTemps( std::ifstream & input, int timeSize )
 {
   double res1, res2(0.);
-    int node_max, node_count(0);
+    int node_max(0), node_count(0);
     std::ofstream outFile("MAX_TEMPS.dat");
 
     if (timeSize == 2) --timeSize;
