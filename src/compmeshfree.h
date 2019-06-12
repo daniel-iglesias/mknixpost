@@ -29,6 +29,7 @@ class vtkCellArray;
 class vtkPolyData;
 class vtkFloatArray;
 class vtkDelaunay2D;
+class vtkLine;
 class vtkDataSetMapper;
 class vtkActor;
 class vtkRenderer;
@@ -47,9 +48,7 @@ public:
 
     void initialize( std::map<int, CompNode>&, int, int, std::vector<int> );
   
-    void initBoundary( int );
-
-    void addToBoundary( int );
+    void readBoundary(std::ifstream& , int  );
 
     void addToRender( vtkRenderer* );
 
@@ -85,6 +84,7 @@ public:
     vtkPoints* vPoints;
     vtkCellArray* boundary;
     vtkPolyData* profile;
+    std::vector< vtkLine* > lines;
     std::vector< std::vector< vtkFloatArray* > > scalarFields;
     std::vector< std::vector< double > > energyFields;
     vtkDelaunay2D* del2D;

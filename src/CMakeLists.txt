@@ -53,6 +53,8 @@ SET(MknixPostSrcs
   compradmap.cpp
   mknixpost.cpp
   vtkinterface.cpp
+  compmesh2D.cpp
+  compmesh3D.cpp
   compmeshfree.cpp
   compmeshfree3D.cpp
   graphwidget.cpp

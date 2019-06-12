@@ -44,6 +44,8 @@ class CompRigid2D;
 class CompRigid3D;
 class CompBar;
 class CompMassPoint;
+class CompMesh2D;
+class CompMesh3D;
 class CompMeshfree;
 class CompMeshfree3D;
 class CompRadMap;
@@ -96,6 +98,8 @@ class VTKInterface{
     void readAnalysis( );
     vtkRenderer* getRenderer();
     void updateStep( );
+    void refreshTable( CompMesh2D* );
+    void refreshTable( CompMesh3D* );
     void refreshTable( CompMeshfree* );
     void refreshTable( CompMeshfree3D* );
     void stepRecord( int );
@@ -105,6 +109,7 @@ class VTKInterface{
     std::ifstream input; // file to read system from
 
     int dimension;
+    int colorIndex;
 
     bool rec;
     std::map<int, CompNode> nodes;
@@ -112,6 +117,8 @@ class VTKInterface{
     std::map<std::string, CompMassPoint> massPoints;
     std::map<std::string, CompRigid2D> rigid2Ds;
     std::map<std::string, CompRigid3D> rigid3Ds;
+    std::map<std::string, CompMesh2D> mesh2D;
+    std::map<std::string, CompMesh3D> mesh3D;
     std::map<std::string, CompMeshfree> meshfree;
     std::map<std::string, CompMeshfree3D> meshfree3D;
     std::map<std::string, CompRadMap> environments;

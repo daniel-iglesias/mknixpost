@@ -24,9 +24,11 @@
 #include <vtkPoints.h>
 #include <vtkCellArray.h>
 #include <vtkPolyData.h>
+#include <vtkPolyDataMapper.h>
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkDelaunay3D.h>
+#include <vtkTriangle.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkDataSetMapper.h>
 #include <vtkActor.h>
@@ -80,17 +82,17 @@ void CompMeshfree3D::initialize( std::map<int, CompNode>& nodes_in,
                                 int firstNode_in,
                                 int lastNode_in,
                                 std::vector<int> boundaryNodes
-                                )
+                              , double* color )
 {
   int j=0;
   for(int i=firstNode_in; i<=lastNode_in; ++i){
     nodes[j] = &(nodes_in[i]);
     ++j;
   }
-  
+
   vPoints = vtkPoints::New();
   vPoints->SetNumberOfPoints( nodes.size() );
-  
+
   for(std::map<int,CompNode*>::iterator it = nodes.begin();
       it != nodes.end();
       ++it)
@@ -101,42 +103,54 @@ void CompMeshfree3D::initialize( std::map<int, CompNode>& nodes_in,
                          (*it).second->getz()
                          );
   }
-  
-  //  boundary = vtkCellArray::New();
-  //  if(boundaryNodes.size() != 0){
-  //    boundary->InsertNextCell(boundaryNodes.size());
-  //    for (int i=0; i<boundaryNodes.size(); ++i){
-  //      boundary->InsertCellPoint( boundaryNodes[i]-firstNode_in );
-  //    }
-  //  }
-  
-  
+
   profile = vtkPolyData::New();
   profile->SetPoints( vPoints );
   //  profile->SetPolys( boundary );
-  
+
   del3D = vtkDelaunay3D::New();
-  del3D->SetAlpha(0.5);
-#if VTK_MAJOR_VERSION > 5
-  del3D->SetInputData( profile );
-#else
-  del3D->SetInput( profile );
-#endif
+//   del3D->SetAlpha(5);
+//   del3D->SetInput( profile );
   //  del3D->SetSource( profile );
-  
+
   aDataSetMapper = vtkDataSetMapper::New();
 #if VTK_MAJOR_VERSION > 5
   aDataSetMapper->SetInputData( del3D->GetOutput() );
 #else
   aDataSetMapper->SetInput( del3D->GetOutput() );
 #endif
-  
+
   anActor = vtkActor::New();
   anActor->SetMapper(aDataSetMapper);
   //   anActor->GetProperty()->SetOpacity(0.5); // translucent !!!
   //   anActor->AddPosition(2, 0, 0);
-  anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
-  
+  anActor->GetProperty()->SetColor(color[0], color[1], color[2]);
+//   anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
+
+}
+
+void CompMeshfree3D::readBoundary(ifstream& input, int trianglesNumber )
+{
+  int n1, n2, n3, j;
+
+  boundary = vtkCellArray::New();
+    for(j=0; j<trianglesNumber; ++j){
+      input >> n1 >> n2 >> n3;
+      triangles.push_back( vtkTriangle::New() );
+      triangles.back()->GetPointIds()->SetId ( 0, n1 );
+      triangles.back()->GetPointIds()->SetId ( 1, n2 );
+      triangles.back()->GetPointIds()->SetId ( 2, n3 );
+      //add the triangles to the list of triangles
+      boundary->InsertNextCell( triangles[j] );
+    }
+  profile->SetPolys( boundary );
+    boundaryMapper = vtkPolyDataMapper::New();
+#if VTK_MAJOR_VERSION > 5
+    boundaryMapper->SetInputData( profile );
+#else
+    boundaryMapper->SetInput( profile );
+#endif
+    anActor->SetMapper(boundaryMapper);
 }
 
 void CompMeshfree3D::addToRender(vtkRenderer * renderer_in)
@@ -192,7 +206,7 @@ void CompMeshfree3D::readResults( std::ifstream & input, int timeSize )
         scalarFields.push_back( *(new std::vector< vtkFloatArray* >) ); // Container
         scalarFields[1].push_back( vtkFloatArray::New() ); // always zero
       }
-    
+
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_x
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_y
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_z
@@ -209,7 +223,7 @@ void CompMeshfree3D::readResults( std::ifstream & input, int timeSize )
       )
     {
       input >> res1 >> res2 >> res3 >> res4 >> res5 >> res6;
-     
+
       if(oldFields==0)
         scalarFields[i][0]->InsertNextValue( 0. ); // no contour
 
@@ -219,10 +233,10 @@ void CompMeshfree3D::readResults( std::ifstream & input, int timeSize )
       scalarFields[i][lastField+4]->InsertNextValue( res4 ); // sigma_xy
       scalarFields[i][lastField+5]->InsertNextValue( res5 ); // sigma_yz
       scalarFields[i][lastField+6]->InsertNextValue( res6 ); // sigma_xz
-      scalarFields[i][lastField+7]->InsertNextValue( sqrt(0.5*( pow(res1-res2,2) 
+      scalarFields[i][lastField+7]->InsertNextValue( sqrt(0.5*( pow(res1-res2,2)
                                                               + pow(res2-res3,2)
                                                               + pow(res3-res1,2)
-                                                              + 6*( pow(res4,2) 
+                                                              + 6*( pow(res4,2)
                                                                   + pow(res5,2)
                                                                   + pow(res6,2) ) )
                                                          ) ); // sigma_VM
@@ -230,17 +244,17 @@ void CompMeshfree3D::readResults( std::ifstream & input, int timeSize )
       if (timeSize == 1){//for static case
         if(oldFields==0)
           scalarFields[1][0]->InsertNextValue( 0. ); // no contour
-          
+
         scalarFields[1][lastField+1]->InsertNextValue( res1 ); // sigma_x
         scalarFields[1][lastField+2]->InsertNextValue( res2 ); // sigma_y
         scalarFields[1][lastField+3]->InsertNextValue( res3 ); // sigma_z
         scalarFields[1][lastField+4]->InsertNextValue( res4 ); // sigma_xy
         scalarFields[1][lastField+5]->InsertNextValue( res5 ); // sigma_yz
         scalarFields[1][lastField+6]->InsertNextValue( res6 ); // sigma_xz
-        scalarFields[1][lastField+7]->InsertNextValue( sqrt(0.5*( pow(res1-res2,2) 
+        scalarFields[1][lastField+7]->InsertNextValue( sqrt(0.5*( pow(res1-res2,2)
                                                               + pow(res2-res3,2)
                                                               + pow(res3-res1,2)
-                                                              + 6*( pow(res4,2) 
+                                                              + 6*( pow(res4,2)
                                                                   + pow(res5,2)
                                                                   + pow(res6,2) ) )
                                                          ) ); // sigma_VM
@@ -251,13 +265,68 @@ void CompMeshfree3D::readResults( std::ifstream & input, int timeSize )
   drawScalarField(0,0);
 }
 
+// Does not allow to join different analysis if they need multiple readings
+// But allows to have the stress and temperatures in different blocks
+// STRESS must be read AFTER
+void CompMeshfree3D::readTemps( std::ifstream & input, int timeSize )
+{
+  double res1, res2(0.);
+  int node_max, node_count(0);
+  std::ofstream outFile("MAX_TEMPS.dat");
+
+  if (timeSize == 2) --timeSize;
+
+  for( int i=0; i<timeSize; ++i ){
+    if(scalarFields.size() < i+1){
+      scalarFields.push_back( std::vector< vtkFloatArray* >() ); // Container
+      scalarFields[i].push_back( vtkFloatArray::New() ); // always zero
+    }
+    scalarFields[i].push_back( vtkFloatArray::New() ); // Temp
+
+    if (timeSize == 1){//for static case
+      if(scalarFields.size() < 2){
+	scalarFields.push_back( std::vector< vtkFloatArray* >() ); // Container
+	scalarFields[1].push_back( vtkFloatArray::New() ); // always zero
+      }
+      scalarFields[1].push_back( vtkFloatArray::New() ); // Temp
+    }
+
+    std::map<int,CompNode*>::iterator itNodes;
+    for( itNodes = nodes.begin();
+         itNodes!= nodes.end();
+	 ++itNodes
+       )
+	{
+	  ++node_count;
+	  input >> res1;
+	  if (res1 > res2){
+	    res2 = res1;
+	    node_max = node_count;
+	  }
+// 	  cout << node_count << " " << res1 << ", " <<endl;
+
+	  scalarFields[0][0]->InsertNextValue( 0. ); // no contour
+	  scalarFields[0][1]->InsertNextValue( res1 ); // Temp
+
+	  if (timeSize == 1){//for static case
+	    scalarFields[1][0]->InsertNextValue( 0. ); // no contour
+	    scalarFields[1][1]->InsertNextValue( res1 ); // Temp
+	  }
+	}
+	outFile << "MAXIMUM TEMPERATURE AT STEP " << i << ", NODE " << node_max << " = " << res2 << endl;
+	res2=0;
+  }
+//   cout << "scalarFields[0][0].components =" << scalarFields[0][0]->GetNumberOfTuples() << endl;
+//   cout << "scalarFields[0][1].components =" << scalarFields[0][1]->GetNumberOfTuples() << endl;
+//   cout << "scalarFields[1][0].components =" << scalarFields[1][0]->GetNumberOfTuples() << endl;
+//   cout << "scalarFields[1][1].components =" << scalarFields[1][1]->GetNumberOfTuples() << endl;
+  drawScalarField(0,0);
+}
+
 void CompMeshfree3D::drawScalarField(int index, int step)
 {
   currentIndex = index;
-  profile->GetPointData()->SetScalars( scalarFields[step][currentIndex] );
-  findMinMaxScalars();
-  aDataSetMapper->SetScalarRange(minScalar, maxScalar);
-  
+  updateScalarField(step);
 }
 
 void CompMeshfree3D::updateScalarField(int step)
@@ -265,14 +334,20 @@ void CompMeshfree3D::updateScalarField(int step)
   if( scalarFields.size() > 0){
     profile->GetPointData()->SetScalars( scalarFields[step][currentIndex] );
     findMinMaxScalars();
-    aDataSetMapper->SetScalarRange(minScalar, maxScalar);
+    if(boundaryMapper)
+      boundaryMapper->SetScalarRange(minScalar, maxScalar);
+    else
+      aDataSetMapper->SetScalarRange(minScalar, maxScalar);
   }
-  
+
 }
 
 void CompMeshfree3D::setLookUpTable( vtkLookupTable* table_in )
-{ 
-  aDataSetMapper->SetLookupTable( table_in); 
+{
+  if(boundaryMapper)
+    boundaryMapper->SetLookupTable( table_in);
+  else
+  aDataSetMapper->SetLookupTable( table_in);
 }
 
 void CompMeshfree3D::findMinMaxScalars()
@@ -283,13 +358,15 @@ void CompMeshfree3D::findMinMaxScalars()
     minScalar = min_max[0];
     maxScalar = min_max[1];
   }
-  cout << "scalarFields.size() "<< scalarFields.size() << endl;  
-  cout << "scalarFields[0][0] "<< scalarFields[0][0] << endl;
+//   cout << "scalarFields.size() "<< scalarFields.size() << endl;
+//   cout << "scalarFields[0][0] "<< scalarFields[0][0] << endl;
   for( int i=1; i<scalarFields.size(); ++i ){
-    cout << "i, currentIndex = " << i << currentIndex << endl;
-    cout << "scalarFields[i][currentIndex] "<< scalarFields[i][currentIndex] << endl;
+//     cout << "i, currentIndex = " << i << currentIndex << endl;
+//     cout << "scalarFields[i][currentIndex] "; scalarFields[i][currentIndex]->Print(std::cout);
     scalarFields[i][currentIndex]->GetRange(min_max);
     if(minScalar > min_max[0]) minScalar = min_max[0];
     if(maxScalar < min_max[1]) maxScalar = min_max[1];
+//     cout << "minScalar " << minScalar << ", min_max[0] " << min_max[0] << endl;
+//     cout << "maxScalar " << maxScalar << ", min_max[1] " << min_max[1] << endl;
   }
 }

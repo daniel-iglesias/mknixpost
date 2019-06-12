@@ -30,6 +30,7 @@
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkDelaunay2D.h>
+#include <vtkTriangle.h>
 #include <vtkDataSetMapper.h>
 #include <vtkActor.h>
 #include <vtkRenderer.h>
@@ -55,7 +56,7 @@ CompRigid2D::CompRigid2D( std::string name_in
     , currentIndex(0)
     , anActor(0)
 {
-  for(int i=0; i<2; ++i){ 
+  for(int i=0; i<2; ++i){
     line.push_back(vtkLineSource::New());
     line.back()->SetResolution(10);
 
@@ -68,7 +69,7 @@ CompRigid2D::CompRigid2D( std::string name_in
     lineMapper.back()->SetInputConnection( lineTubes.back()->GetOutputPort() );
 
     lineActor.push_back( vtkActor::New() );
-    lineActor.back()->SetMapper( lineMapper.back() );
+//     lineActor.back()->SetMapper( lineMapper.back() );
 // l    lineActor.back()->GetProperty()->SetColor(0.4235,0.6667,0.000);
   }
   lineActor[0]->GetProperty()->SetColor(0.9,0.,0.);
@@ -85,7 +86,7 @@ CompRigid2D::~CompRigid2D()
 //   del2D->Delete();
 //   aDataSetMapper->Delete();
 //   anActor->Delete();
-// 
+//
 //   std::vector< std::vector< vtkFloatArray* > >::iterator itScalarFields;
 //   std::vector< vtkFloatArray* >::iterator itOneField;
 //   for( itScalarFields = scalarFields.begin();
@@ -112,7 +113,7 @@ void CompRigid2D::addToRender(vtkRenderer * renderer_in)
        it_actor!= lineActor.end();
        ++it_actor)
     renderer_in->AddActor( *(it_actor) );
-  
+
   if(anActor) renderer_in->AddActor( anActor );
 
 }
@@ -124,7 +125,7 @@ void CompRigid2D::removeFromRender(vtkRenderer * renderer_in)
        it_actor!= lineActor.end();
        ++it_actor)
     renderer_in->RemoveActor( *(it_actor) );
-   
+
     if(anActor) renderer_in->RemoveActor( anActor );
 }
 
@@ -156,23 +157,44 @@ void CompRigid2D::updatePoints(int step)
 		      );
     }
     vPoints->Modified();
-//   boundary->Modified();
+    boundary->Modified();
   }
 
 
 }
 
-void CompRigid2D::readDomain(ifstream& input, int timeSize, int nodesNumber, int dim )
+void CompRigid2D::readBoundary(ifstream& input, int trianglesNumber )
+{
+  int n1, n2, n3, j;
+
+  boundary = vtkCellArray::New();
+    for(j=0; j<trianglesNumber; ++j){
+      input >> n1 >> n2 >> n3;
+      triangles.push_back( vtkTriangle::New() );
+      triangles.back()->GetPointIds()->SetId ( 0, n1 );
+      triangles.back()->GetPointIds()->SetId ( 1, n2 );
+      triangles.back()->GetPointIds()->SetId ( 2, n3 );
+      //add the triangles to the list of triangles
+      boundary->InsertNextCell( triangles[j] );
+    }
+    profile = vtkPolyData::New();
+}
+
+
+
+void CompRigid2D::readDomain(ifstream& input, int timeSize, int nodesNumber, int dim, double* color )
 {
   //////////////////////////////////////////////
   // Populating the storage vector of positions
   double res1, res2, zero(0);
+  int i,j;
+  if(timeSize==2) --timeSize; // if it is static
 
   for( int i=points.size(); i<timeSize; ++i ){
     points.push_back( *(new std::vector< CompNode* >) ); // Container for step
-    
+
     for(int j=0; j<nodesNumber; ++j){
-      points[i].push_back( new CompNode ); 
+      points[i].push_back( new CompNode );
       input >> res1 >> res2;
       points[i][j]->setx( res1 ); // x
       points[i][j]->sety( res2 ); // y
@@ -191,11 +213,24 @@ void CompRigid2D::readDomain(ifstream& input, int timeSize, int nodesNumber, int
                          points[0][i]->getz()
                        );
   }
-  profile = vtkPolyData::New();
-  profile->SetPoints( vPoints );
-//   profile->SetPolys( boundary );
-  del2D = vtkDelaunay2D::New();
-  del2D->SetAlpha(5.);
+  if(profile){
+    profile->SetPoints( vPoints ); // if existed, there is a boundary defined
+    profile->SetPolys( boundary );
+    boundaryMapper = vtkPolyDataMapper::New();
+#if VTK_MAJOR_VERSION > 5
+    boundaryMapper->SetInputData( profile );
+#else
+    boundaryMapper->SetInput( profile );
+#endif
+    anActor = vtkActor::New();
+    anActor->SetMapper(boundaryMapper);
+  }
+  else{
+    profile = vtkPolyData::New();
+    profile->SetPoints( vPoints );
+  //   profile->SetPolys( boundary );
+    del2D = vtkDelaunay2D::New();
+    del2D->SetAlpha(5.);
 #if VTK_MAJOR_VERSION > 5
   del2D->SetInputData( profile );
   del2D->SetSourceData( profile );
@@ -203,20 +238,23 @@ void CompRigid2D::readDomain(ifstream& input, int timeSize, int nodesNumber, int
   del2D->SetInput( profile );
   del2D->SetSource( profile );
 #endif
-  del2D->Update();
+    del2D->Update();
 
-  aDataSetMapper = vtkDataSetMapper::New();
+    aDataSetMapper = vtkDataSetMapper::New();
 #if VTK_MAJOR_VERSION > 5
   aDataSetMapper->SetInputData( del2D->GetOutput() );
+// IF this doesn't work, try:
+//  aDataSetMapper->SetInputConnection( del2D->GetOutputPort() );
 #else
   aDataSetMapper->SetInput( del2D->GetOutput() );
 #endif
 
-  anActor = vtkActor::New();
-  anActor->SetMapper(aDataSetMapper);
-//   anActor->AddPosition(2, 0, 0);InsertNextValue
-  anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
-
+    anActor = vtkActor::New();
+    anActor->SetMapper(aDataSetMapper);
+  //   anActor->AddPosition(2, 0, 0);InsertNextValue
+  }
+//   anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
+  anActor->GetProperty()->SetDiffuseColor(color[0], color[1], color[2]);
 }
 
 
@@ -239,7 +277,7 @@ void CompRigid2D::updateScalarField(int step)
 
 
 void CompRigid2D::setLookUpTable( vtkLookupTable* table_in )
-{ 
+{
 }
 
 
@@ -251,7 +289,7 @@ void CompRigid2D::findMinMaxScalars()
     minScalar = min_max[0];
     maxScalar = min_max[1];
   }
-  
+
   for( int i=1; i<scalarFields.size(); ++i ){
     scalarFields[i][currentIndex]->GetRange(min_max);
     if(minScalar > min_max[0]) minScalar = min_max[0];

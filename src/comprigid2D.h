@@ -33,6 +33,7 @@ class vtkCellArray;
 class vtkPolyData;
 class vtkFloatArray;
 class vtkDelaunay2D;
+class vtkTriangle;
 class vtkDataSetMapper;
 class vtkActor;
 class vtkRenderer;
@@ -63,7 +64,9 @@ public:
 
     void updatePoints(int);
 
-    void readDomain( std::ifstream&, int, int, int );
+    void readBoundary( std::ifstream&, int );
+    
+    void readDomain( std::ifstream&, int, int, int, double* );
     
     void readResults( std::ifstream&, int );
 
@@ -101,11 +104,13 @@ public:
     std::vector< vtkActor* > lineActor;
 
     vtkPoints* vPoints;
-//     vtkCellArray* boundary;
+    std::vector< vtkTriangle* > triangles;
+    vtkCellArray* boundary;
     vtkPolyData* profile;
     std::vector< std::vector< vtkFloatArray* > > scalarFields;
     vtkDelaunay2D* del2D;
 
+    vtkPolyDataMapper* boundaryMapper;
     vtkDataSetMapper* aDataSetMapper;
     vtkActor* anActor;
 

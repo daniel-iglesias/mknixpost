@@ -17,8 +17,8 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#ifndef COMPMESHFREE3D_H
-#define COMPMESHFREE3D_H
+#ifndef COMPMESH3D_H
+#define COMPMESH3D_H
 
 #include <vector>
 #include <map>
@@ -27,11 +27,9 @@
 class vtkPoints;
 class vtkCellArray;
 class vtkPolyData;
+class vtkTetra;
 class vtkFloatArray;
-class vtkDelaunay3D;
-class vtkTriangle;
 class vtkDataSetMapper;
-class vtkPolyDataMapper;
 class vtkActor;
 class vtkRenderer;
 class vtkLookupTable;
@@ -41,19 +39,15 @@ class CompNode;
 /**
 	@author Daniel Iglesias <diglesias@mecanica.upm.es>
 */
-class CompMeshfree3D{
+class CompMesh3D{
 public:
-    CompMeshfree3D();
+    CompMesh3D();
 
-    ~CompMeshfree3D();
+    ~CompMesh3D();
 
-    void initialize( std::map<int, CompNode>&, int, int, std::vector<int>, double*  );
+    void initialize( std::map<int, CompNode>&, int, int, std::vector<std::vector<int> >&, double* );
   
-    void readBoundary( std::ifstream&, int );
-    
-//     void initBoundary( int );
-// 
-//     void addToBoundary( int );
+    void readBoundary(std::ifstream& , int  );
 
     void addToRender( vtkRenderer* );
 
@@ -61,10 +55,12 @@ public:
 
     void updatePoints();
 
+    void readEnergy( std::ifstream&, int );
+    
     void readResults( std::ifstream&, int );
 
-    void readTemps( std::ifstream & , int );
-    
+    void readTemps( std::ifstream&, int );
+
     void drawScalarField( int, int );
 
     void updateScalarField( int );
@@ -85,14 +81,13 @@ public:
     double maxScalar;
 
     vtkPoints* vPoints;
-    vtkCellArray* boundary;
+    vtkCellArray* domain;
+    std::vector< vtkTetra* > tetrahedrons;
     vtkPolyData* profile;
-    std::vector< vtkTriangle* > triangles;
     std::vector< std::vector< vtkFloatArray* > > scalarFields;
-    vtkDelaunay3D* del3D;
+    std::vector< std::vector< double > > energyFields;
 
     vtkDataSetMapper* aDataSetMapper;
-    vtkPolyDataMapper* boundaryMapper;
     vtkActor* anActor;
 
 };

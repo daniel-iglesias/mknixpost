@@ -17,42 +17,40 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-#include "compmeshfree.h"
+#include "compmesh3D.h"
 
 #include "compnode.h"
 
 #include <vtkPoints.h>
 #include <vtkCellArray.h>
 #include <vtkPolyData.h>
+#include <vtkTetra.h>
 #include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkLine.h>
-#include <vtkDelaunay2D.h>
 #include <vtkDataSetMapper.h>
 #include <vtkActor.h>
 #include <vtkRenderer.h>
 #include <vtkProperty.h>
 #include <vtkLookupTable.h>
 
-CompMeshfree::CompMeshfree()
+CompMesh3D::CompMesh3D()
 : currentIndex(0),
   minScalar(0),
   maxScalar(0),
   vPoints(0),
-  boundary(0),
+  domain(0),
   profile(0),
-  del2D(0),
   aDataSetMapper(0),
   anActor(0)
 {
 }
 
-CompMeshfree::~CompMeshfree()
+CompMesh3D::~CompMesh3D()
 {
   if(vPoints) vPoints->Delete();
-  if(boundary) boundary->Delete();
+  if(domain) domain->Delete();
   if(profile) profile->Delete();
-  if(del2D) del2D->Delete();
   if(aDataSetMapper) aDataSetMapper->Delete();
   if(anActor) anActor->Delete();
 
@@ -75,21 +73,21 @@ CompMeshfree::~CompMeshfree()
 }
 
 
-void CompMeshfree::initialize( std::map<int, CompNode>& nodes_in,
+void CompMesh3D::initialize( std::map<int, CompNode>& nodes_in,
                               int firstNode_in,
                               int lastNode_in,
-                              std::vector<int> boundaryNodes
-                              )
+                              std::vector<std::vector<int> >& cells_in
+                              , double* color )
 {
   int j=0;
   for(int i=firstNode_in; i<=lastNode_in; ++i){
     nodes[j] = &(nodes_in[i]);
     ++j;
   }
-
+  
   vPoints = vtkPoints::New();
   vPoints->SetNumberOfPoints( nodes.size() );
-
+  
   for(std::map<int,CompNode*>::iterator it = nodes.begin();
       it != nodes.end();
       ++it)
@@ -100,80 +98,63 @@ void CompMeshfree::initialize( std::map<int, CompNode>& nodes_in,
                          (*it).second->getz()
                          );
   }
+  
+  domain = vtkCellArray::New();
 
-
-  profile = vtkPolyData::New();
-  profile->SetPoints( vPoints );
-
-  if(boundaryNodes.size() != 0){
-    boundary = vtkCellArray::New();
-    boundary->InsertNextCell(boundaryNodes.size());
-    for (int i=0; i<boundaryNodes.size(); ++i){
-      boundary->InsertCellPoint( boundaryNodes[i]-firstNode_in );
-    }
-    profile->SetPolys( boundary );
+  std::vector<std::vector<int> >::iterator it_cells;
+  for(it_cells=cells_in.begin();
+      it_cells!=cells_in.end();
+      ++it_cells){
+    cout << "cell: " << (*it_cells)[0] << " "
+	 << (*it_cells)[1] << " "
+	 << (*it_cells)[2] << " "
+	 << (*it_cells)[3] << endl;
+    tetrahedrons.push_back(vtkTetra::New());
+    tetrahedrons.back()->GetPointIds()->SetId ( 0, (*it_cells)[3]-firstNode_in );
+    tetrahedrons.back()->GetPointIds()->SetId ( 1, (*it_cells)[0]-firstNode_in );
+    tetrahedrons.back()->GetPointIds()->SetId ( 2, (*it_cells)[1]-firstNode_in );
+    tetrahedrons.back()->GetPointIds()->SetId ( 3, (*it_cells)[2]-firstNode_in );
+  
+    domain->InsertNextCell ( tetrahedrons.back() );
   }
+ 
+  profile = vtkPolyData::New();
+  profile->SetPoints( vPoints );  
+  profile->SetPolys( domain );
 
-  del2D = vtkDelaunay2D::New();
-//   del2D->SetAlpha(5.);
-#if VTK_MAJOR_VERSION > 5
-  del2D->SetInputData( profile );
-  del2D->SetSourceData( profile );
-#else
-  del2D->SetInput( profile );
-  del2D->SetSource( profile );
-#endif
-  del2D->Update();
-
+  
   aDataSetMapper = vtkDataSetMapper::New();
-#if VTK_MAJOR_VERSION > 5
-  aDataSetMapper->SetInputData( del2D->GetOutput() );
-// IF this doesn't work, try:
-//  aDataSetMapper->SetInputConnection( del2D->GetOutputPort() );
-#else
-  aDataSetMapper->SetInput( del2D->GetOutput() );
-#endif
-
+  aDataSetMapper->SetInputData( profile );
+  
   anActor = vtkActor::New();
   anActor->SetMapper(aDataSetMapper);
   //   anActor->GetProperty()->SetOpacity(0.5); // translucent !!!
   //   anActor->AddPosition(2, 0, 0);
-  anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
-
+  anActor->GetProperty()->SetColor(color[0], color[1], color[2]);
+//   anActor->GetProperty()->SetDiffuseColor(1.0, 0.3, 0.3);
+  
 }
 
-void CompMeshfree::readBoundary(ifstream& input, int segmentsNumber )
+void CompMesh3D::readBoundary(ifstream& input, int segmentsNumber )
 {
-  int n1, n2, n3, j;
-
-  boundary = vtkCellArray::New();
-    for(j=0; j<segmentsNumber; ++j){
-      input >> n1 >> n2;
-      lines.push_back( vtkLine::New() );
-      lines.back()->GetPointIds()->SetId ( 0, n1 );
-      lines.back()->GetPointIds()->SetId ( 1, n2 );
-      //add the lines to the list of boundary segments
-      boundary->InsertNextCell( lines[j] );
-    }
-  profile->SetPolys( boundary );
-  del2D->Update();
-//     boundaryMapper = vtkPolyDataMapper::New();
-//     boundaryMapper->SetInput(profile);
-//     anActor->SetMapper(boundaryMapper);
+  int n1, n2, j;  
+  for(j=0; j<segmentsNumber; ++j){
+    input >> n1 >> n2;
+  }
 }
 
 
-void CompMeshfree::addToRender(vtkRenderer * renderer_in)
+void CompMesh3D::addToRender(vtkRenderer * renderer_in)
 {
   if(anActor) renderer_in->AddActor( anActor );
 }
 
-void CompMeshfree::removeFromRender(vtkRenderer * renderer_in)
+void CompMesh3D::removeFromRender(vtkRenderer * renderer_in)
 {
   if(anActor) renderer_in->RemoveActor( anActor );
 }
 
-void CompMeshfree::updatePoints()
+void CompMesh3D::updatePoints()
 {
   for(std::map<int,CompNode*>::iterator it = nodes.begin();
       it != nodes.end();
@@ -186,15 +167,14 @@ void CompMeshfree::updatePoints()
                     );
   }
   vPoints->Modified();
-//  boundary->Modified();
 
 }
 
-void CompMeshfree::readEnergy( std::ifstream & input, int timeSize )
+void CompMesh3D::readEnergy( std::ifstream & input, int timeSize )
 {
 //   double ePot, eKin, eEla, eTot;
 //   if (timeSize == 2) --timeSize; // Static case
-//
+// 
 //   for( int i=0; i<timeSize; ++i ){
 //     input >> ePot >> eKin >> eEla >> eTot;
 //     energyFields.push_back( std::vector<double>() );
@@ -202,12 +182,12 @@ void CompMeshfree::readEnergy( std::ifstream & input, int timeSize )
 //     energyFields[i].push_back( eKin ); // Kinetic
 //     energyFields[i].push_back( eEla ); // Elastic
 //     energyFields[i].push_back( eTot ); // Total
-//   }
+//   }  
 }
 
 // Does not allow to join different analysis if they need multiple readings
 // But allows to have the stress and temperatures in different blocks
-void CompMeshfree::readResults( std::ifstream & input, int timeSize )
+void CompMesh3D::readResults( std::ifstream & input, int timeSize )
 {
   int lastField(0), oldFields( scalarFields.size() );
   if(oldFields != 0) lastField = oldFields-1;
@@ -229,7 +209,7 @@ void CompMeshfree::readResults( std::ifstream & input, int timeSize )
         scalarFields.push_back( *(new std::vector< vtkFloatArray* >) ); // Container
         scalarFields[1].push_back( vtkFloatArray::New() ); // always zero
       }
-
+    
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_x
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_y
       scalarFields[1].push_back( vtkFloatArray::New() ); // sigma_xy
@@ -258,7 +238,7 @@ void CompMeshfree::readResults( std::ifstream & input, int timeSize )
       if (timeSize == 1){//for static case
         if(oldFields==0)
           scalarFields[1][0]->InsertNextValue( 0. ); // no contour
-
+	  
         scalarFields[1][lastField+1]->InsertNextValue( res1 ); // sigma_x
         scalarFields[1][lastField+2]->InsertNextValue( res2 ); // sigma_y
         scalarFields[1][lastField+3]->InsertNextValue( res3 ); // sigma_xy
@@ -276,7 +256,7 @@ void CompMeshfree::readResults( std::ifstream & input, int timeSize )
 // Does not allow to join different analysis if they need multiple readings
 // But allows to have the stress and temperatures in different blocks
 // STRESS must be read AFTER
-void CompMeshfree::readTemps( std::ifstream & input, int timeSize )
+void CompMesh3D::readTemps( std::ifstream & input, int timeSize )
 {
   double res1, res2(0.);
     int node_max, node_count(0);
@@ -326,7 +306,7 @@ void CompMeshfree::readTemps( std::ifstream & input, int timeSize )
   drawScalarField(0,0);
 }
 
-void CompMeshfree::drawScalarField(int index, int step)
+void CompMesh3D::drawScalarField(int index, int step)
 {
 //  double min_max[2];
   currentIndex = index;
@@ -334,10 +314,10 @@ void CompMeshfree::drawScalarField(int index, int step)
   findMinMaxScalars();
 //  aDataSetMapper->SetScalarRange(0, 1100);
   aDataSetMapper->SetScalarRange(minScalar, maxScalar);
-
+ 
 }
 
-void CompMeshfree::updateScalarField(int step)
+void CompMesh3D::updateScalarField(int step)
 {
 //  double min_max[2];
   if( scalarFields.size() > 0){
@@ -349,13 +329,13 @@ void CompMeshfree::updateScalarField(int step)
 }
 
 
-void CompMeshfree::setLookUpTable( vtkLookupTable* table_in )
-{
-  aDataSetMapper->SetLookupTable( table_in);
+void CompMesh3D::setLookUpTable( vtkLookupTable* table_in )
+{ 
+  aDataSetMapper->SetLookupTable( table_in); 
 }
 
 
-void CompMeshfree::findMinMaxScalars()
+void CompMesh3D::findMinMaxScalars()
 {
   double min_max[2];
   if( scalarFields.size()>0 ){ // set first values
@@ -363,7 +343,7 @@ void CompMeshfree::findMinMaxScalars()
     minScalar = min_max[0];
     maxScalar = min_max[1];
   }
-
+  
   for( int i=1; i<scalarFields.size(); ++i ){
     scalarFields[i][currentIndex]->GetRange(min_max);
     if(minScalar > min_max[0]) minScalar = min_max[0];
