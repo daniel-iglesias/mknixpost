@@ -52,16 +52,16 @@
 #include "compradmap.h"
 
 double VTKInterface::palette[10][3] =
-{ {0.0,0.3,0.3},
-  {0.3,1.0,0.3},
-  {0.3,0.3,1.0},
-  {0.5,0.3,0.3},
-  {0.3,0.5,0.3},
-  {0.3,0.3,0.5},
-  {0.2,0.3,0.3},
-  {0.3,0.2,0.3},
-  {0.3,0.3,0.2},
-  {0.5,0.5,1.0}
+{ {0.4,0.8,0.17},
+  {0.4,0.8,0.17},
+  {0.99,0.8,0.1},
+  {0.4,0.8,0.17},
+  {0.9,0.0,0.2},
+  {0.4,0.8,0.17},
+  {0.99,0.8,0.1},
+  {0.4,0.8,0.17},
+  {0.99,0.8,0.1},
+  {0.4,0.8,0.17},
 };
 
 VTKInterface::VTKInterface()
@@ -105,7 +105,7 @@ VTKInterface::VTKInterface(vtkRenderer* theRenderer_in)
   barActor->GetLabelTextProperty()->SetFontSize(16);
   barActor->GetLabelTextProperty()->ItalicOff();
 
-  rec = FALSE;
+  rec = false;
 }
 
 
@@ -331,7 +331,7 @@ void VTKInterface::readRigidBodies()
       rigid3Ds[name] = CompRigid3D(name, mat, &nodes[nodeA], &nodes[nodeB], &nodes[nodeC], &nodes[nodeD]);
       rigid3Ds[name].updatePoints( 0 );
       rigid3Ds[name].addToRender( this->theRenderer );
-      componentsNames.push_back("GENERIC3D.");
+      componentsNames.push_back("COMPONENT.");
       componentsNames.back().append(name.c_str());
     }
   }
