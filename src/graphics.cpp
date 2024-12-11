@@ -7,7 +7,7 @@ Graphics::Graphics( std::string oFileName_in )
   oFileName = oFileName_in ;
   setEncoding( "iso_8859_15" );
   setGrid( "on" );
-  setTitle( "Title" );
+  setTitle( "MkniX simulation" );
   setXtitle( "X-title" );
   setYtitle( "Y-title" );
   setXrange( 0.0 , 0.0 );
