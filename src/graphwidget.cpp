@@ -47,13 +47,16 @@ GraphWidget::GraphWidget( const QString & title, QWidget * parent )
   this->setWidget( theWidget );
   theWidget->setCentralWidget( theGraph );
   
-  this->resize(800,2000);
-//  this->move(0,0);
-  theWidget->show();
-
   createActions();
   createMenus();
   createToolBars();
+
+  theWidget->show();
+
+  this->theWidget->adjustSize();
+//  this->resize(800,2000);
+//  this->move(0,0);
+
 }
 
 
@@ -233,27 +236,23 @@ void GraphWidget::readFile(const QString & file_name )
           }
         }
         else if(!strcmp(stringKeyword.c_str(),"TEMPERATURE")){
-            double temp;
-            std::string sFlexBodyName;
-            std::vector<QString>::iterator itFlexNodes;
-            
-            input >> sFlexBodyName;
-            QString qFlexBodyName( sFlexBodyName.c_str() );
-            
-            for(itTime = timeLine.begin();
-                itTime!= timeLine.end();
-                ++itTime
+          std::string sRigidBodyName;          
+          input >> sRigidBodyName   ;
+          double temp;
+          for(itTime = timeLine.begin();
+              itTime!= timeLine.end();
+              ++itTime
+              )
+          {
+              for(it = nodes.begin();
+                  it!= nodes.end();
+                  ++it
                 )
-            {
-                for( itFlexNodes = flexNodes[qFlexBodyName].begin();
-                    itFlexNodes!= flexNodes[qFlexBodyName].end();
-                    ++itFlexNodes
-                    )
-                {
-                    input >> temp;
-                    nodes[*itFlexNodes]["Temp"].push_back(temp);
-                }
-            }
+              {
+                input >> temp;
+                it->second["temp"].push_back(temp);
+              }
+          }
         }
         else if(!strcmp(stringKeyword.c_str(),"DOMAIN")){
           double dx,dy,dz;
@@ -315,22 +314,23 @@ void GraphWidget::readFile(const QString & file_name )
           }
         }
 
-        else{
-          std::istringstream i(stringKeyword);
-          i >> time;
-//          time = atof(keyword);
-          timeLine.push_back( time );
-          for(it = nodes.begin();
-              it!= nodes.end();
-              ++it
-            )
-          {
-            input >> disp_x >> disp_y;
-            it->second["x"].push_back(disp_x);
-            it->second["y"].push_back(disp_y);
-            if(dimension==3){
-              input >> disp_z;
-              it->second["z"].push_back(disp_z);
+        else if(!strcmp(stringKeyword.c_str(),"CONFIGURATION")){
+          while(input >> stringKeyword){
+            if(!strcmp(stringKeyword.c_str(),"ENDCONFIGURATION")) break;
+            time = atof(stringKeyword.c_str());
+            timeLine.push_back( time );
+            for(it = nodes.begin();
+                it!= nodes.end();
+                ++it
+              )
+            {
+              input >> disp_x >> disp_y;
+              it->second["x"].push_back(disp_x);
+              it->second["y"].push_back(disp_y);
+              if(dimension==3){
+                input >> disp_z;
+                it->second["z"].push_back(disp_z);
+              }
             }
           }
         }
