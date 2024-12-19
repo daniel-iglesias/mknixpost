@@ -163,7 +163,7 @@ void CompRigid2D::updatePoints(int step)
 
 }
 
-void CompRigid2D::readBoundary(ifstream& input, int trianglesNumber )
+void CompRigid2D::readBoundary(std::ifstream& input, int trianglesNumber )
 {
   int n1, n2, n3, j;
 
@@ -182,7 +182,7 @@ void CompRigid2D::readBoundary(ifstream& input, int trianglesNumber )
 
 
 
-void CompRigid2D::readDomain(ifstream& input, int timeSize, int nodesNumber, int dim, double* color )
+void CompRigid2D::readDomain(std::ifstream& input, int timeSize, int nodesNumber, int dim, double* color )
 {
   //////////////////////////////////////////////
   // Populating the storage vector of positions
